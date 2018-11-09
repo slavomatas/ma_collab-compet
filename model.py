@@ -53,27 +53,33 @@ class Network(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, fc1_units=128, fc2_units=128):
         super(Actor, self).__init__()
-        self.FC1 = nn.Linear(state_size, 500)
-        self.FC2 = nn.Linear(500, 128)
-        self.FC3 = nn.Linear(128, action_size)
+        self.FC1 = nn.Linear(state_size, fc1_units)
+        self.FC2 = nn.Linear(fc1_units, fc2_units)
+        self.FC3 = nn.Linear(fc2_units, action_size)
 
-    # action output between -2 and 2
     def forward(self, state):
         result = F.relu(self.FC1(state))
         result = F.relu(self.FC2(result))
         result = F.tanh(self.FC3(result))
-        return result
+
+        # return result
+
+        norm = th.norm(result)
+
+        # we bound the norm of the vector to be between 0 and 10
+        return 5.0 * (F.tanh(norm)) * result / norm if norm > 0 else 3 * result
+
 
 
 class Critic(nn.Module):
-    def __init__(self, state_size, action_size, agents, fc1_units=1024, fc2_units=512, fc3_units=300):
+    def __init__(self, state_size, action_size, agents, fc1_units=128, fc2_units=128, fc3_units=128):
         super(Critic, self).__init__()
         self.agents = agents
 
         self.FC1 = nn.Linear(state_size * agents, fc1_units)
-        self.FC2 = nn.Linear(1024+action_size * agents, fc2_units)
+        self.FC2 = nn.Linear(fc1_units+(action_size * agents), fc2_units)
         self.FC3 = nn.Linear(fc2_units, fc3_units)
         self.FC4 = nn.Linear(fc3_units, 1)
 
@@ -83,5 +89,4 @@ class Critic(nn.Module):
         combined = th.cat([result, action], 1)
         result = F.relu(self.FC2(combined))
         return self.FC4(F.relu(self.FC3(result)))
-
 

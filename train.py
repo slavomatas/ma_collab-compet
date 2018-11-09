@@ -65,15 +65,14 @@ def maddpg():
     # number of training episodes.
     # change this to higher number to experiment. say 30000.
     number_of_episodes = 30000
-    episode_length = 80
+    episode_length = 2000
 
     # how many episodes to save policy
     save_interval = 1000
-    t = 0
 
     # amplitude of OU noise
     # this slowly decreases to 0
-    noise = 2
+    noise = 1
     noise_reduction = 0.9999
 
     # how many episodes before update
@@ -100,75 +99,53 @@ def maddpg():
         reward_this_episode = np.zeros(agents)
 
         env_info = env.reset(train_mode=True)[brain_name]
+
         obs = env_info.vector_observations
-        obs_full = torch.cat(list(torch.tensor(env_info.vector_observations)))
+        obs_full = np.concatenate(obs)
+        # obs_full = torch.cat(list(torch.tensor(obs)))
 
         # for calculating rewards for this particular episode - addition of all time steps
-        tmax = 0
-
         for episode_t in range(episode_length):
 
-            t += 1
-
-            # explore = only explore for a certain number of episodes
-
-            # action input needs to be transposed
             actions = maddpg.act(transpose_to_tensor(list(obs)), noise=noise)
-            noise *= noise_reduction
+            #noise *= noise_reduction
 
-            actions = torch.stack(actions).detach().cpu().numpy()
-
-            # transpose the list of list
-            # flip the first two indices
-            # input to step requires the first index to correspond to number of parallel agents
-            #actions_for_env = np.rollaxis(actions_array, 1)
-
-            # step forward one frame
-            #env_info = env.step(np.concatenate(actions))[brain_name]
+            actions = torch.stack(actions).view(-1).detach().cpu().numpy()
             env_info = env.step(actions)[brain_name]
 
-            #next_obs, next_obs_full, rewards, dones, info = env.step(actions_for_env)
+            next_obs = env_info.vector_observations  # get the next state
+            next_obs_full = np.concatenate(next_obs)
+            rewards = env_info.rewards  # get the reward
+            dones = env_info.local_done  # see if episode has finished
 
             # add data to buffer
-            transition = (obs, obs_full, actions_for_env, rewards, next_obs, next_obs_full, dones)
+            transition = (obs, obs_full, actions, rewards, next_obs, next_obs_full, dones)
 
             buffer.push(transition)
 
+            if rewards[0] > 0:
+                print("rewards {}".format(rewards))
             reward_this_episode += rewards
 
             obs, obs_full = next_obs, next_obs_full
 
         # update once after every episode_per_update
         if len(buffer) > BATCH_SIZE and episode % episode_per_update == 0:
-            for agent_idx in range(3):
+            for agent_idx in range(2):
                 samples = buffer.sample(BATCH_SIZE)
                 maddpg.update(samples, agent_idx)
             maddpg.update_targets()  # soft update the target network towards the actual networks
 
+        print("episode rewards {}".format(reward_this_episode))
         agent0_reward.append(reward_this_episode[0])
         agent1_reward.append(reward_this_episode[1])
 
-        if episode % 100 == 0 or episode == number_of_episodes - 1:
+        if episode % 10 == 0 or episode == number_of_episodes - 1:
             avg_rewards = [np.mean(agent0_reward), np.mean(agent1_reward)]
             agent0_reward = []
             agent1_reward = []
             for agent_idx, avg_rew in enumerate(avg_rewards):
                 print('agent%i/mean_episode_rewards' % agent_idx, avg_rew, episode)
-
-        '''
-        # saving model
-        save_dict_list = []
-        if save_info:
-            for i in range(3):
-                save_dict = {'actor_params': maddpg.maddpg_agent[i].actor.state_dict(),
-                             'actor_optim_params': maddpg.maddpg_agent[i].actor_optimizer.state_dict(),
-                             'critic_params': maddpg.maddpg_agent[i].critic.state_dict(),
-                             'critic_optim_params': maddpg.maddpg_agent[i].critic_optimizer.state_dict()}
-                save_dict_list.append(save_dict)
-
-                torch.save(save_dict_list,
-                           os.path.join(model_dir, 'episode-{}.pt'.format(episode)))
-        '''
 
     env.close()
 
