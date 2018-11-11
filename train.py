@@ -8,7 +8,7 @@ from utils import transpose_list, transpose_to_tensor
 from unityagents import UnityEnvironment
 
 BUFFER_SIZE = 100000  # replay buffer size
-BATCH_SIZE = 1000 # minibatch size
+BATCH_SIZE = 1024 # minibatch size
 
 
 def seeding(seed=1):
@@ -75,8 +75,8 @@ def maddpg():
     noise = 1
     noise_reduction = 0.9999
 
-    # how many episodes before update
-    episode_per_update = 2
+    # how many steps before update
+    steps_per_update = 100
 
     log_path = os.getcwd() + "/log"
     model_dir = os.getcwd() + "/model_dir"
@@ -126,12 +126,13 @@ def maddpg():
 
             obs, obs_full = next_obs, next_obs_full
 
-        # update once after every episode_per_update
-        if len(buffer) > BATCH_SIZE and episode % episode_per_update == 0:
-            for agent_idx in range(2):
-                samples = buffer.sample(BATCH_SIZE)
-                maddpg.update(samples, agent_idx)
-            maddpg.update_targets()  # soft update the target network towards the actual networks
+            # update once after every steps_per_update
+            if len(buffer) > BATCH_SIZE and (episode_t % steps_per_update == 0):
+                # print("mapddpg update {}".format(episode_t))
+                for agent_idx in range(2):
+                    samples = buffer.sample(BATCH_SIZE)
+                    maddpg.update(samples, agent_idx)
+                maddpg.update_targets()  # soft update the target network towards the actual networks
 
         print("episode rewards {}".format(reward_this_episode))
         agent0_reward.append(reward_this_episode[0])

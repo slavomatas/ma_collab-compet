@@ -1,7 +1,8 @@
 import torch
+import torch.nn.functional as F
+
 from model import Actor, Critic
 from noise import OUNoise
-from torch.nn import MSELoss
 from torch.optim import Adam
 from utils import hard_update, soft_update, transpose_to_tensor
 
@@ -9,7 +10,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class DDPGAgent:
-    def __init__(self, state_size, action_size, agents, lr_actor=1.0e-2, lr_critic=1.0e-2):
+    def __init__(self, state_size, action_size, agents, lr_actor=0.01, lr_critic=0.01):
         super(DDPGAgent, self).__init__()
 
         self.actor = Actor(state_size, action_size, seed=0).to(device)
@@ -38,7 +39,7 @@ class DDPGAgent:
 
 
 class MADDPG:
-    def __init__(self, state_size, action_size, agents, discount_factor=0.95, tau=0.02):
+    def __init__(self, state_size, action_size, agents, discount_factor=0.95, tau=0.01):
         super(MADDPG, self).__init__()
         self.action_size = action_size
         self.agents = agents
@@ -158,84 +159,64 @@ class MADDPG:
     def update(self, samples, agent_number):
         """update the critics and actors of all the agents """
 
-        # print('update the critics and actors of all the agents ')
-
-        '''
-        obs = []
-        obs_full = []
-        action = []
-        reward = []
-        next_obs = []
-        next_obs_full = []
-        done = []
-
-        for sample in samples:
-            o, o_f, a, r, n_o, n_o_f, d = transpose_to_tensor(sample)
-
-            obs.append(o)
-            obs_full.append(o_f)
-            action.append(a)
-            reward.append(r)
-            next_obs.append(n_o)
-            next_obs_full.append(n_o_f)
-            done.append(d)
-        '''
-
-        obs, obs_full, action, reward, next_obs, next_obs_full, done = [transpose_to_tensor(sample) for sample in samples]
+        states, states_all, actions, rewards, states_next, next_states_all, dones = [transpose_to_tensor(sample) for sample in samples]
 
         agent = self.maddpg_agent[agent_number]
         agent.critic_optimizer.zero_grad()
 
+        # ---------------------------- update critic ---------------------------- #
+        # Get predicted next-state actions and Q values from target models
+
         # critic loss = batch mean of (y- Q(s,a) from target network)^2
         # y = reward of this timestep + discount * Q(st+1,at+1) from target network
-        next_obs = torch.stack(next_obs)
-        target_actions = self.target_act(next_obs)
-        target_actions = torch.cat(target_actions, dim=1)
 
-        next_obs_full = torch.stack(next_obs_full)
+        states_next = torch.stack(states_next)
+        actions_next = self.target_act(states_next)
+        actions_next = torch.cat(actions_next, dim=1)
+
+        next_states_all = torch.stack(next_states_all)
         with torch.no_grad():
-            q_next = agent.target_critic(next_obs_full, target_actions)
+            Q_targets_next = agent.target_critic(next_states_all, actions_next)
 
-        target_Q = torch.stack(reward)[:, agent_number].view(-1, 1) + self.discount_factor * q_next * (
-                    1 - torch.stack(done)[:, agent_number].view(-1, 1))
+        # Compute Q targets for current states (y_i)
+        Q_targets = torch.stack(rewards)[:, agent_number].view(-1, 1) + self.discount_factor * Q_targets_next * (
+                    1 - torch.stack(dones)[:, agent_number].view(-1, 1))
 
-        obs_full = torch.stack(obs_full)
-        action = torch.stack(action).view(-1, self.action_size * self.agents)
-        current_Q = agent.critic(obs_full, action)
+        # Compute Q expected
+        states_all = torch.stack(states_all)
+        actions = torch.stack(actions).view(-1, self.action_size * self.agents)
+        Q_expected = agent.critic(states_all, actions)
+
+        # Compute critic loss
 
         # huber_loss = torch.nn.SmoothL1Loss()
         # critic_loss = huber_loss(current_Q, target_Q.detach())
-        critic_loss = MSELoss()(current_Q, target_Q.detach())
-        print("critic_loss {}".format(critic_loss))
-        critic_loss.backward()
+        critic_loss = F.mse_loss(Q_expected, Q_targets.detach())
+        #print("critic_loss {}".format(critic_loss))
 
-        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
+        # Minimize the loss
+        critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 1)
         agent.critic_optimizer.step()
 
         # update actor network using policy gradient
         agent.actor_optimizer.zero_grad()
 
-        # make input to agent
-        # detach the other agents to save computation, saves some time for computing derivative
-        '''
-        q_input = [self.maddpg_agent[i].actor(ob) if i == agent_number \
-                       else self.maddpg_agent[i].actor(ob).detach()
-                   for i, ob in enumerate(obs)]
-        '''
-        q_input = []
+        # ---------------------------- update actor ---------------------------- #
+        actions_pred = []
         for i in range(self.agents):
             if i == agent_number:
-                q_input.append(self.maddpg_agent[i].actor(torch.stack(obs)[:, i, :]))
+                actions_pred.append(self.maddpg_agent[i].actor(torch.stack(states)[:, i, :]))
             else:
-                q_input.append(self.maddpg_agent[i].actor(torch.stack(obs)[:, i, :]).detach())
+                actions_pred.append(self.maddpg_agent[i].actor(torch.stack(states)[:, i, :]).detach())
 
-        q_input = torch.cat(q_input, dim=1)
+        actions_pred = torch.cat(actions_pred, dim=1)
 
         # combine all the actions and observations for input to critic
         # many of the obs are redundant, and obs[1] contains all useful information already
 
         # get the policy gradient
-        actor_loss = -agent.critic(obs_full, q_input).mean()
+        actor_loss = -agent.critic(states_all, actions_pred).mean()
         actor_loss.backward()
 
         # torch.nn.utils.clip_grad_norm_(agent.actor.parameters(),0.5)
