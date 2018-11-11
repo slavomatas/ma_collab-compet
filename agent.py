@@ -12,9 +12,9 @@ class DDPGAgent:
     def __init__(self, state_size, action_size, agents, lr_actor=1.0e-2, lr_critic=1.0e-2):
         super(DDPGAgent, self).__init__()
 
-        self.actor = Actor(state_size, action_size).to(device)
+        self.actor = Actor(state_size, action_size, seed=0).to(device)
         self.critic = Critic(state_size, action_size, agents).to(device)
-        self.target_actor = Actor(state_size, action_size).to(device)
+        self.target_actor = Actor(state_size, action_size, seed=0).to(device)
         self.target_critic = Critic(state_size, action_size, agents).to(device)
 
         self.noise = OUNoise(action_size, scale=1.0)
@@ -157,8 +157,10 @@ class MADDPG:
 
     def update(self, samples, agent_number):
         """update the critics and actors of all the agents """
-        print('update the critics and actors of all the agents ')
 
+        # print('update the critics and actors of all the agents ')
+
+        '''
         obs = []
         obs_full = []
         action = []
@@ -177,6 +179,9 @@ class MADDPG:
             next_obs.append(n_o)
             next_obs_full.append(n_o_f)
             done.append(d)
+        '''
+
+        obs, obs_full, action, reward, next_obs, next_obs_full, done = [transpose_to_tensor(sample) for sample in samples]
 
         agent = self.maddpg_agent[agent_number]
         agent.critic_optimizer.zero_grad()
@@ -198,12 +203,13 @@ class MADDPG:
         action = torch.stack(action).view(-1, self.action_size * self.agents)
         current_Q = agent.critic(obs_full, action)
 
-        #huber_loss = torch.nn.SmoothL1Loss()
-        #critic_loss = huber_loss(curent_q, target_q.detach())
+        # huber_loss = torch.nn.SmoothL1Loss()
+        # critic_loss = huber_loss(current_Q, target_Q.detach())
         critic_loss = MSELoss()(current_Q, target_Q.detach())
+        print("critic_loss {}".format(critic_loss))
         critic_loss.backward()
 
-        #torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
         agent.critic_optimizer.step()
 
         # update actor network using policy gradient

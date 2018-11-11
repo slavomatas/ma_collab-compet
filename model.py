@@ -52,6 +52,7 @@ class Network(nn.Module):
 '''
 
 
+'''
 class Actor(nn.Module):
     def __init__(self, state_size, action_size, fc1_units=128, fc2_units=128):
         super(Actor, self).__init__()
@@ -59,18 +60,65 @@ class Actor(nn.Module):
         self.FC2 = nn.Linear(fc1_units, fc2_units)
         self.FC3 = nn.Linear(fc2_units, action_size)
 
+    def init_weights(self, m):
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+            m.bias.data.fill_(0.1)
+
     def forward(self, state):
         result = F.relu(self.FC1(state))
         result = F.relu(self.FC2(result))
-        result = F.tanh(self.FC3(result))
-
-        # return result
+        act = F.tanh(self.FC3(result))
+        act = th.clamp(act, -1.0, 1.0)
 
         norm = th.norm(result)
 
         # we bound the norm of the vector to be between 0 and 10
         return 5.0 * (F.tanh(norm)) * result / norm if norm > 0 else 3 * result
 
+        return act
+'''
+
+
+class Actor(nn.Module):
+    """Actor (Policy) Model."""
+
+    def __init__(self, state_size, action_size, seed, fc1_units=128, fc2_units=128):
+        """Initialize parameters and build model.
+        Params
+        ======
+            state_size (int): Dimension of each state
+            action_size (int): Dimension of each action
+            seed (int): Random seed
+            fc1_units (int): Number of nodes in first hidden layer
+            fc2_units (int): Number of nodes in second hidden layer
+        """
+        super(Actor, self).__init__()
+        self.seed = th.manual_seed(seed)
+
+        self.model = nn.Sequential(
+            #nn.BatchNorm1d(state_size),
+            nn.Linear(state_size, fc1_units),
+            nn.ReLU(),
+            #nn.BatchNorm1d(fc1_units),
+            nn.Linear(fc1_units, fc2_units),
+            nn.ReLU(),
+            #nn.BatchNorm1d(fc2_units),
+            nn.Linear(fc2_units, action_size),
+            nn.Tanh()
+        )
+
+        self.model.apply(self.init_weights)
+
+    def init_weights(self, m):
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+            m.bias.data.fill_(0.1)
+
+    def forward(self, state):
+        act = self.model(state)
+        act = th.clamp(act, -1.0, 1.0)
+        return act
 
 
 class Critic(nn.Module):

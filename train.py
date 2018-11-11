@@ -1,5 +1,4 @@
 import os
-import imageio
 import numpy as np
 import torch
 
@@ -10,6 +9,7 @@ from unityagents import UnityEnvironment
 
 BUFFER_SIZE = 100000  # replay buffer size
 BATCH_SIZE = 1000 # minibatch size
+
 
 def seeding(seed=1):
     np.random.seed(seed)
@@ -102,13 +102,12 @@ def maddpg():
 
         obs = env_info.vector_observations
         obs_full = np.concatenate(obs)
-        # obs_full = torch.cat(list(torch.tensor(obs)))
 
         # for calculating rewards for this particular episode - addition of all time steps
         for episode_t in range(episode_length):
 
             actions = maddpg.act(transpose_to_tensor(list(obs)), noise=noise)
-            #noise *= noise_reduction
+            noise *= noise_reduction
 
             actions = torch.stack(actions).view(-1).detach().cpu().numpy()
             env_info = env.step(actions)[brain_name]
@@ -118,13 +117,11 @@ def maddpg():
             rewards = env_info.rewards  # get the reward
             dones = env_info.local_done  # see if episode has finished
 
-            # add data to buffer
+            # add experiences to buffer
             transition = (obs, obs_full, actions, rewards, next_obs, next_obs_full, dones)
 
             buffer.push(transition)
 
-            if rewards[0] > 0:
-                print("rewards {}".format(rewards))
             reward_this_episode += rewards
 
             obs, obs_full = next_obs, next_obs_full
@@ -148,6 +145,7 @@ def maddpg():
                 print('agent%i/mean_episode_rewards' % agent_idx, avg_rew, episode)
 
     env.close()
+
 
 if __name__ == '__main__':
     maddpg()
