@@ -115,7 +115,7 @@ class MADDPG:
         # Compute Q expected
         states_all = torch.stack(states_all)
         actions_all = torch.stack(actions_all)
-        #actions_all = torch.stack(actions_all).view(-1, self.action_size * self.agents)
+        # actions_all = torch.stack(actions_all).view(-1, self.action_size * self.agents)
         q_expected = agent.critic(states_all, actions_all)
 
         # Compute critic loss
@@ -126,7 +126,7 @@ class MADDPG:
 
         # Minimize the loss
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
+        # torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
         agent.critic_optimizer.step()
 
         # update actor network using policy gradient
