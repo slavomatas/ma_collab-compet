@@ -59,25 +59,6 @@ class Critic(nn.Module):
 
         self.seed = th.manual_seed(0)
 
-        '''
-        self.model_input = nn.Sequential(
-            nn.BatchNorm1d(state_size * agents),
-            nn.Linear(state_size * agents, fc1_units),
-            nn.ReLU(),
-            # nn.BatchNorm1d(fc1_units),
-        )
-
-        self.model_output = nn.Sequential(
-            nn.BatchNorm1d(fc1_units+(action_size * agents)),
-            nn.Linear(fc1_units+(action_size * agents), fc2_units),
-            nn.ReLU(),
-            nn.Linear(fc2_units, 1),
-        )
-
-        self.model_input.apply(self.init_weights)
-        self.model_output.apply(self.init_weights)
-        '''
-
         self.model = nn.Sequential(
             nn.BatchNorm1d((state_size + action_size) * agents),
             nn.Linear((state_size + action_size) * agents, fc1_units),
@@ -90,9 +71,6 @@ class Critic(nn.Module):
         self.model.apply(self.init_weights)
 
     def forward(self, states, actions):
-        #i = th.cat([self.model_input(states), actions], dim=1)
-        #return self.model_output(i)
-
         xs = th.cat((states, actions), dim=1)
         return self.model(xs)
 
