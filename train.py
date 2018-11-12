@@ -8,7 +8,7 @@ from utils import transpose_list, transpose_to_tensor
 from unityagents import UnityEnvironment
 
 BUFFER_SIZE = 100000  # replay buffer size
-BATCH_SIZE = 1024 # minibatch size
+BATCH_SIZE = 512 # minibatch size
 
 
 def seeding(seed=1):
@@ -128,7 +128,6 @@ def maddpg():
 
             # update once after every steps_per_update
             if len(buffer) > BATCH_SIZE and (episode_t % steps_per_update == 0):
-                # print("mapddpg update {}".format(episode_t))
                 for agent_idx in range(2):
                     samples = buffer.sample(BATCH_SIZE)
                     maddpg.update(samples, agent_idx)

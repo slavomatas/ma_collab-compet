@@ -83,7 +83,7 @@ class Actor(nn.Module):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=128, fc2_units=128):
+    def __init__(self, state_size, action_size, seed, fc1_units=512, fc2_units=128):
         """Initialize parameters and build model.
         Params
         ======
@@ -97,13 +97,13 @@ class Actor(nn.Module):
         self.seed = th.manual_seed(seed)
 
         self.model = nn.Sequential(
-            #nn.BatchNorm1d(state_size),
+            nn.BatchNorm1d(state_size),
             nn.Linear(state_size, fc1_units),
             nn.ReLU(),
-            #nn.BatchNorm1d(fc1_units),
+            nn.BatchNorm1d(fc1_units),
             nn.Linear(fc1_units, fc2_units),
             nn.ReLU(),
-            #nn.BatchNorm1d(fc2_units),
+            nn.BatchNorm1d(fc2_units),
             nn.Linear(fc2_units, action_size),
             nn.Tanh()
         )
@@ -117,12 +117,11 @@ class Actor(nn.Module):
 
     def forward(self, state):
         act = self.model(state)
-        act = th.clamp(act, -1.0, 1.0)
         return act
 
-
+'''
 class Critic(nn.Module):
-    def __init__(self, state_size, action_size, agents, fc1_units=128, fc2_units=128, fc3_units=128):
+    def __init__(self, state_size, action_size, agents, fc1_units=1024, fc2_units=512, fc3_units=128):
         super(Critic, self).__init__()
         self.agents = agents
 
@@ -137,4 +136,48 @@ class Critic(nn.Module):
         combined = th.cat([result, action], 1)
         result = F.relu(self.FC2(combined))
         return self.FC4(F.relu(self.FC3(result)))
+'''
+
+
+class Critic(nn.Module):
+    """Critic (Value) Model."""
+
+    def __init__(self, state_size, action_size, agents, fc1_units=512, fc2_units=128):
+        """Initialize parameters and build model.
+        Params
+        ======
+            state_size (int): Dimension of each state
+            action_size (int): Dimension of each action
+            seed (int): Random seed
+            fcs1_units (int): Number of nodes in the first hidden layer
+            fc2_units (int): Number of nodes in the second hidden layer
+        """
+        super(Critic, self).__init__()
+
+        self.seed = th.manual_seed(0)
+
+        self.model_input = nn.Sequential(
+            nn.Linear(state_size * agents, fc1_units),
+            nn.ReLU(),
+            nn.BatchNorm1d(fc1_units),
+        )
+
+        self.model_output = nn.Sequential(
+            nn.Linear(fc1_units+(action_size * agents), fc2_units),
+            nn.ReLU(),
+            nn.Linear(fc2_units, 1),
+        )
+
+        self.model_input.apply(self.init_weights)
+        self.model_output.apply(self.init_weights)
+
+    def forward(self, state, action):
+        i = th.cat([self.model_input(state), action], dim=1)
+        return self.model_output(i)
+
+    def init_weights(self, m):
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+            m.bias.data.fill_(0.1)
+
 

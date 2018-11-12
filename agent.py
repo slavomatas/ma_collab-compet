@@ -28,9 +28,22 @@ class DDPGAgent:
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr_critic, weight_decay=1.e-5)
 
     def act(self, state, noise=0.0):
+        '''
         state = state.to(device)
         action = self.actor(state) + (noise * self.noise.noise()).to(device)
         return action
+        '''
+
+        """Returns actions for given state as per current policy."""
+        state = state.float().unsqueeze(0)
+
+        self.actor.eval()
+        with torch.no_grad():
+            action = self.actor(state).squeeze(0)
+        self.actor.train()
+
+        action += (noise * self.noise.noise()).to(device)
+        return torch.clamp(action, -1, 1)
 
     def target_act(self, state, noise=0.0):
         state = state.to(device)
