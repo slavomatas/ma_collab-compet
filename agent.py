@@ -205,11 +205,10 @@ class MADDPG:
         # huber_loss = torch.nn.SmoothL1Loss()
         # critic_loss = huber_loss(current_Q, target_Q.detach())
         critic_loss = F.mse_loss(Q_expected, Q_targets.detach())
-        #print("critic_loss {}".format(critic_loss))
 
         # Minimize the loss
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
         agent.critic_optimizer.step()
 
         # update actor network using policy gradient

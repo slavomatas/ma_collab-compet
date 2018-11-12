@@ -22,10 +22,10 @@ class Actor(nn.Module):
             nn.BatchNorm1d(state_size),
             nn.Linear(state_size, fc1_units),
             nn.ReLU(),
-            nn.BatchNorm1d(fc1_units),
+            #nn.BatchNorm1d(fc1_units),
             nn.Linear(fc1_units, fc2_units),
             nn.ReLU(),
-            nn.BatchNorm1d(fc2_units),
+            #nn.BatchNorm1d(fc2_units),
             nn.Linear(fc2_units, action_size),
             nn.Tanh()
         )
@@ -40,6 +40,7 @@ class Actor(nn.Module):
     def forward(self, state):
         act = self.model(state)
         return act
+
 
 class Critic(nn.Module):
     """Critic (Value) Model."""
@@ -62,10 +63,11 @@ class Critic(nn.Module):
             nn.BatchNorm1d(state_size * agents),
             nn.Linear(state_size * agents, fc1_units),
             nn.ReLU(),
-            nn.BatchNorm1d(fc1_units),
+            # nn.BatchNorm1d(fc1_units),
         )
 
         self.model_output = nn.Sequential(
+            nn.BatchNorm1d(fc1_units+(action_size * agents)),
             nn.Linear(fc1_units+(action_size * agents), fc2_units),
             nn.ReLU(),
             nn.Linear(fc2_units, 1),
