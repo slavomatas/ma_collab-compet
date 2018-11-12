@@ -81,98 +81,15 @@ class MADDPG:
         """get target network actions from all the agents in the MADDPG object """
         target_actions = []
 
-        for i in range(2):
+        for i in range(obs_all_agents.shape[1]):
             target_actions.append(self.maddpg_agent[i].target_act(obs_all_agents[:, i, :], noise))
 
         return target_actions
 
-    '''
-    def update(self, buffer):
-        # do not train until exploration is enough
-        if self.episode_done <= self.episodes_before_train:
-            return None, None
-
-        ByteTensor = th.cuda.ByteTensor if self.use_cuda else th.ByteTensor
-        FloatTensor = th.cuda.FloatTensor if self.use_cuda else th.FloatTensor
-
-        c_loss = []
-        a_loss = []
-        for agent in range(self.n_agents):
-
-            samples = buffer.sample(BATCH_SIZE)
-
-            transitions = self.memory.sample(self.batch_size)
-            batch = Experience(*zip(*transitions))
-
-            non_final_mask = ByteTensor(list(map(lambda s: s is not None,
-                                                 batch.next_states)))
-            # state_batch: batch_size x n_agents x dim_obs
-            state_batch = th.stack(batch.states).type(FloatTensor)
-            action_batch = th.stack(batch.actions).type(FloatTensor)
-            reward_batch = th.stack(batch.rewards).type(FloatTensor)
-            # : (batch_size_non_final) x n_agents x dim_obs
-            non_final_next_states = th.stack(
-                [s for s in batch.next_states
-                 if s is not None]).type(FloatTensor)
-
-            # for current agent
-            whole_state = state_batch.view(self.batch_size, -1)
-            whole_action = action_batch.view(self.batch_size, -1)
-            self.critic_optimizer[agent].zero_grad()
-            current_Q = self.critics[agent](whole_state, whole_action)
-
-            non_final_next_actions = [
-                self.actors_target[i](non_final_next_states[:,
-                                      i,
-                                      :]) for i in range(
-                    self.n_agents)]
-            non_final_next_actions = th.stack(non_final_next_actions)
-            non_final_next_actions = (
-                non_final_next_actions.transpose(0,
-                                                 1).contiguous())
-
-            target_Q = th.zeros(
-                self.batch_size).type(FloatTensor)
-
-            target_Q[non_final_mask] = self.critics_target[agent](
-                non_final_next_states.view(-1, self.n_agents * self.n_states),
-                non_final_next_actions.view(-1,
-                                            self.n_agents * self.n_actions)
-            ).squeeze()
-            # scale_reward: to scale reward in Q functions
-
-            target_Q = (target_Q.unsqueeze(1) * self.GAMMA) + (
-                    reward_batch[:, agent].unsqueeze(1) * scale_reward)
-
-            loss_Q = nn.MSELoss()(current_Q, target_Q.detach())
-            loss_Q.backward()
-            self.critic_optimizer[agent].step()
-
-            self.actor_optimizer[agent].zero_grad()
-            state_i = state_batch[:, agent, :]
-            action_i = self.actors[agent](state_i)
-            ac = action_batch.clone()
-            ac[:, agent, :] = action_i
-            whole_action = ac.view(self.batch_size, -1)
-            actor_loss = -self.critics[agent](whole_state, whole_action)
-            actor_loss = actor_loss.mean()
-            actor_loss.backward()
-            self.actor_optimizer[agent].step()
-            c_loss.append(loss_Q)
-            a_loss.append(actor_loss)
-
-        if self.steps_done % 100 == 0 and self.steps_done > 0:
-            for i in range(self.n_agents):
-                soft_update(self.critics_target[i], self.critics[i], self.tau)
-                soft_update(self.actors_target[i], self.actors[i], self.tau)
-
-        return c_loss, a_loss
-    '''
-
     def update(self, samples, agent_number):
         """update the critics and actors of all the agents """
 
-        states, states_all, actions, rewards, states_next, next_states_all, dones = [transpose_to_tensor(sample) for sample in samples]
+        states, states_all, actions_all, rewards, next_states, next_states_all, dones = [transpose_to_tensor(sample) for sample in samples]
 
         agent = self.maddpg_agent[agent_number]
         agent.critic_optimizer.zero_grad()
@@ -183,28 +100,29 @@ class MADDPG:
         # critic loss = batch mean of (y- Q(s,a) from target network)^2
         # y = reward of this timestep + discount * Q(st+1,at+1) from target network
 
-        states_next = torch.stack(states_next)
-        actions_next = self.target_act(states_next)
-        actions_next = torch.cat(actions_next, dim=1)
+        next_states = torch.stack(next_states)
+        next_actions_all = self.target_act(next_states)
+        next_actions_all = torch.cat(next_actions_all, dim=1)
 
         next_states_all = torch.stack(next_states_all)
         with torch.no_grad():
-            Q_targets_next = agent.target_critic(next_states_all, actions_next)
+            q_targets_next = agent.target_critic(next_states_all, next_actions_all)
 
         # Compute Q targets for current states (y_i)
-        Q_targets = torch.stack(rewards)[:, agent_number].view(-1, 1) + self.discount_factor * Q_targets_next * (
+        q_targets = torch.stack(rewards)[:, agent_number].view(-1, 1) + self.discount_factor * q_targets_next * (
                     1 - torch.stack(dones)[:, agent_number].view(-1, 1))
 
         # Compute Q expected
         states_all = torch.stack(states_all)
-        actions = torch.stack(actions).view(-1, self.action_size * self.agents)
-        Q_expected = agent.critic(states_all, actions)
+        actions_all = torch.stack(actions_all)
+        #actions_all = torch.stack(actions_all).view(-1, self.action_size * self.agents)
+        q_expected = agent.critic(states_all, actions_all)
 
         # Compute critic loss
 
         # huber_loss = torch.nn.SmoothL1Loss()
         # critic_loss = huber_loss(current_Q, target_Q.detach())
-        critic_loss = F.mse_loss(Q_expected, Q_targets.detach())
+        critic_loss = F.mse_loss(q_expected, q_targets.detach())
 
         # Minimize the loss
         critic_loss.backward()
