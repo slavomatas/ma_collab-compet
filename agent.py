@@ -10,13 +10,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class DDPGAgent:
-    def __init__(self, state_size, action_size, agents, lr_actor=0.01, lr_critic=0.01):
+    def __init__(self, state_size, action_size, n_agents, lr_actor=0.01, lr_critic=0.01):
         super(DDPGAgent, self).__init__()
 
         self.actor = Actor(state_size, action_size, seed=0).to(device)
-        self.critic = Critic(state_size, action_size, agents).to(device)
+        self.critic = Critic(state_size, action_size, n_agents).to(device)
         self.target_actor = Actor(state_size, action_size, seed=0).to(device)
-        self.target_critic = Critic(state_size, action_size, agents).to(device)
+        self.target_critic = Critic(state_size, action_size, n_agents).to(device)
 
         self.noise = OUNoise(action_size, scale=1.0)
 
@@ -52,29 +52,19 @@ class DDPGAgent:
 
 
 class MADDPG:
-    def __init__(self, state_size, action_size, agents, discount_factor=0.95, tau=0.01):
+    def __init__(self, state_size, action_size, n_agents, discount_factor=0.95, tau=1e-3):
         super(MADDPG, self).__init__()
         self.action_size = action_size
-        self.agents = agents
-        self.maddpg_agent = [DDPGAgent(state_size=state_size, action_size=action_size, agents=agents) for _ in
-                             range(agents)]
+        self.n_agents = n_agents
+        self.agents = [DDPGAgent(state_size=state_size, action_size=action_size, n_agents=n_agents) for _ in
+                       range(n_agents)]
         self.discount_factor = discount_factor
         self.tau = tau
         self.iter = 0
 
-    def get_actors(self):
-        """get actors of all the agents in the MADDPG object"""
-        actors = [ddpg_agent.actor for ddpg_agent in self.maddpg_agent]
-        return actors
-
-    def get_target_actors(self):
-        """get target_actors of all the agents in the MADDPG object"""
-        target_actors = [ddpg_agent.target_actor for ddpg_agent in self.maddpg_agent]
-        return target_actors
-
     def act(self, obs_all_agents, noise=0.0):
         """get actions from all agents in the MADDPG object"""
-        actions = [agent.act(obs, noise) for agent, obs in zip(self.maddpg_agent, obs_all_agents)]
+        actions = [agent.act(obs, noise) for agent, obs in zip(self.agents, obs_all_agents)]
         return actions
 
     def target_act(self, obs_all_agents, noise=0.0):
@@ -82,7 +72,7 @@ class MADDPG:
         target_actions = []
 
         for i in range(obs_all_agents.shape[1]):
-            target_actions.append(self.maddpg_agent[i].target_act(obs_all_agents[:, i, :], noise))
+            target_actions.append(self.agents[i].target_act(obs_all_agents[:, i, :], noise))
 
         return target_actions
 
@@ -91,7 +81,7 @@ class MADDPG:
 
         states, states_all, actions_all, rewards, next_states, next_states_all, dones = [transpose_to_tensor(sample) for sample in samples]
 
-        agent = self.maddpg_agent[agent_number]
+        agent = self.agents[agent_number]
         agent.critic_optimizer.zero_grad()
 
         # ---------------------------- update critic ---------------------------- #
@@ -134,11 +124,11 @@ class MADDPG:
 
         # ---------------------------- update actor ---------------------------- #
         actions_pred = []
-        for i in range(self.agents):
+        for i in range(self.n_agents):
             if i == agent_number:
-                actions_pred.append(self.maddpg_agent[i].actor(torch.stack(states)[:, i, :]))
+                actions_pred.append(self.agents[i].actor(torch.stack(states)[:, i, :]))
             else:
-                actions_pred.append(self.maddpg_agent[i].actor(torch.stack(states)[:, i, :]).detach())
+                actions_pred.append(self.agents[i].actor(torch.stack(states)[:, i, :]).detach())
 
         actions_pred = torch.cat(actions_pred, dim=1)
 
@@ -158,6 +148,6 @@ class MADDPG:
     def update_targets(self):
         """soft update targets"""
         self.iter += 1
-        for ddpg_agent in self.maddpg_agent:
+        for ddpg_agent in self.agents:
             soft_update(ddpg_agent.target_actor, ddpg_agent.actor, self.tau)
             soft_update(ddpg_agent.target_critic, ddpg_agent.critic, self.tau)
