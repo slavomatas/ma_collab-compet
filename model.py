@@ -3,13 +3,13 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 def hidden_init(layer):
     fan_in = layer.weight.data.size()[0]
     lim = 1. / np.sqrt(fan_in)
     return (-lim, lim)
 
 
-'''
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
@@ -53,7 +53,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, agents, fc1_units=400, fc2_units=300):
+    def __init__(self, state_size, action_size, n_agents, fc1_units=400, fc2_units=300):
         """Initialize parameters and build model.
         Params
         ======
@@ -68,8 +68,8 @@ class Critic(nn.Module):
         self.seed = th.manual_seed(0)
 
         self.model = nn.Sequential(
-            nn.BatchNorm1d((state_size + action_size) * agents),
-            nn.Linear((state_size + action_size) * agents, fc1_units),
+            nn.BatchNorm1d((state_size + action_size) * n_agents),
+            nn.Linear((state_size + action_size) * n_agents, fc1_units),
             nn.ReLU(),
             nn.Linear(fc1_units, fc2_units),
             nn.ReLU(),
@@ -86,8 +86,8 @@ class Critic(nn.Module):
         if type(m) == nn.Linear:
             nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.1)
-'''
 
+'''
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
@@ -155,3 +155,4 @@ class Critic(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+'''
