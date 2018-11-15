@@ -22,8 +22,8 @@ The Multi-Agent DDPG algorithm is am extension of actor-critic policy gradient m
 about the policies of other agents.
 
 A primary motivation behind MADDPG is that, if we know the actions taken by all agents, the environment is stationary even as the policies change,
-since P(s<sup>’<\sup>|s; a<sub>1<\sub>….a<sub>N<\sub>, π<sub>1<\sub>,….,π<sub>N<\sub>) = P(s<sup>’<\sup>|s, a<sub>1<\sub>,….,a<sub>N<\sub>) = P(s<sup>’<\sup>|s; a<sub>1<\sub>,….,a<sub>N<\sub>;π<sub>1<\sub>,…..,π<sub>N<\sub>)
-for any π<sub>i<\sub>= π<sup>’<\sup><sub>i<\sub>. This is not the case if we do not explicitly condition on the actions of other agents, as done for most traditional RL methods.
+since P(s<sup>`<\sup>|s; a<sub>1<\sub>….a<sub>N<\sub>, π<sub>1<\sub>,….,π<sub>N<\sub>) = P(s<sup>`<\sup>|s, a<sub>1<\sub>,….,a<sub>N<\sub>) = P(s<sup>`<\sup>|s; a<sub>1<\sub>,….,a<sub>N<\sub>;π<sub>1<\sub>,…..,π<sub>N<\sub>)
+for any π<sub>i<\sub>= π<sup>`<\sup><sub>i<\sub>. This is not the case if we do not explicitly condition on the actions of other agents, as done for most traditional RL methods.
 
 MADDPG is a multi-agent version of DDPG. DDPG is well suited to continuous control tasks and this just extends it to a multi-agent scenario.
 More details can be found in the [MADDPG paper](https://arxiv.org/abs/1706.02275).
@@ -157,12 +157,19 @@ Agent hyperparameters:
 ```
 
 BATCH_SIZE = 1024 # minibatch size
+
 LR_ACTOR = 1e-2  # learning rate of the actor
+
 LR_CRITIC = 1e-2 # learning rate of the critic
+
 DISCOUNT = 0.99
+
 TAU = 0.001 # for updating target networks
+
 EPISODE_LENGTH = 500
+
 STEPS_PER_UPDATE = 100 # update the network parameters after every 100 samples added to the replay buffer
+
 
 ### System Setup
 
