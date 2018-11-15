@@ -21,8 +21,8 @@ The Multi-Agent DDPG algorithm accomplishes the above mentioned constraints by a
 The Multi-Agent DDPG algorithm is am extension of actor-critic policy gradient methods where the critic is augmented with extra information
 about the policies of other agents.
 
-A primary motivation behind MADDPG is that, if we know the actions taken by all agents, the environment is stationary even as the policies change, since P(s<sup>1 |s, a<sub>1<\sub>,...., a<sub>N<\sub>, π<sub>1<\sub>,...., π<sub>N<\sub>) = P(s <sup>'<\sup> |s, a<sub>1<\sub>,….,a<sub>N<\sub>) = P(s<sup>`<\sup>|s; a<sub>1<\sub>,….,a<sub>N<\sub>;π<sub>1<\sub>,…..,π<sub>N<\sub>)
-for any π<sub>i<\sub>= π<sup>`<\sup><sub>i<\sub>. This is not the case if we do not explicitly condition on the actions of other agents, as done for most traditional RL methods.
+A primary motivation behind MADDPG is that, if we know the actions taken by all agents, the environment is stationary even as the policies change.
+This is not the case if we do not explicitly condition on the actions of other agents, as done for most traditional RL methods.
 
 MADDPG is a multi-agent version of DDPG. DDPG is well suited to continuous control tasks and this just extends it to a multi-agent scenario.
 More details can be found in the [MADDPG paper](https://arxiv.org/abs/1706.02275).
@@ -58,9 +58,8 @@ Fully Connected Layer (in=300, out=2 -> action size)
 ```
 
 The critic is fully connected feed-forward network with two hidden layers, RELU activation and Batch Normalization in the input layer.
-The critic network estimates centralized action-value function that takes as input the observations of all agents x = (o<sub>1<\sub>,.....,o<sub>N<\sub>)
-and the actions of all agents, a<sub>1<\sub>,.....,a<sub>N<\sub>, and outputs the Q-value for agent i.
-Since each Q<sup>π<\sup><sub>i<\sub> is learned separately, agents can have arbitrary reward structures, including conflicting rewards in a competitive setting.
+The critic network estimates centralized action-value function that takes as input the observations of all agents and the actions of all agents, and outputs the Q-value for agent i.
+Since each action-value function is learned separately, agents can have arbitrary reward structures, including conflicting rewards in a competitive setting.
 
 ```
 Fully Connected Layer (in=(24+2)*2 -> state size, out=512)
@@ -182,23 +181,17 @@ STEPS_PER_UPDATE = 100 # update the network parameters after every 100 samples a
 
 ## Conclusion
 
-The DDPG agent was able to train relative quickly compare to PPO agent. DDPG agent successfully solved environment in 252 episodes.
-The PPO agent solved evironment in ~ 5000 episodes and as seen on the scores chart it was not as stable as expected.
-I am trying to run run PPO again with different parameters, in particular LR_ACTOR is set now to 1e-5.
+During the course of training I have been tweaking various aspects of the MADDPG algorithm:
 
-#### Key improvements
-A couple critical changes were made, without which training was very poor:
-  - L2 weight_decay of the critic set to 0.0 (vs 0.01 in the paper).  I think this is because the positive reward signal is pretty sparse in the beginning and this can easily get drowned out by the weight decay.
-  - Actions concatenated into the input layer (vs the 1st hidden layer in the paper).  Not sure why this made a difference, I've seen others say it didn't change things much for them.
-
-## Plot of Rewards
-Using the supplied hyperparameters the agent is able to solve the environments in 2531 episodes.  See [here](assets/training_output.txt) for detailed training results.
-
-This graph shows the average reward over the last 100 consecutive episodes (after taking the maximum over both agents).
-![results](assets/results.png)
+1.) increased the hidden units of actor/critic model - for actor to 1024/300 and for critic to 512/300.
+2.) added batch normalization to the input layer actor and other actor layers as well as to the critic input layer -> this has greatly improved stability and convergence of training.
+3.) actions concatenated into the input layer (as opposed to the concatenation in the 1st hidden layer)
+4.) Set Tau to 0.001 for the soft-updates ([MADDPG paper](https://arxiv.org/abs/1706.02275) suggests 0.01)
+5.) increased BATCH_SIZE to 1024.
 
 
 ## Ideas for Future Work
-  - It would be interesting to apply this algorithm to a more complex environment, like the 2 on 2 [SoccerTwos](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#soccer-twos) as this would involve agents working in both a collaborative and competitive manner simultaneously.  Given that each agent is able to learn it's own reward function, this should be feasible.
+It would be interesting to test this algorithm to solve more complex environments, which would require agents to be working in both a collaborative and competitive manner simultaneously.
+
 
 
