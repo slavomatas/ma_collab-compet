@@ -22,7 +22,7 @@ The Multi-Agent DDPG algorithm is am extension of actor-critic policy gradient m
 about the policies of other agents.
 
 A primary motivation behind MADDPG is that, if we know the actions taken by all agents, the environment is stationary even as the policies change,
-since P(s<sup>`<\sup>|s; a<sub>1<\sub>….a<sub>N<\sub>, π<sub>1<\sub>,….,π<sub>N<\sub>) = P(s<sup>`<\sup>|s, a<sub>1<\sub>,….,a<sub>N<\sub>) = P(s<sup>`<\sup>|s; a<sub>1<\sub>,….,a<sub>N<\sub>;π<sub>1<\sub>,…..,π<sub>N<\sub>)
+since P(s<sup>`<\sup> | s; a<sub>1<\sub>,...., a<sub>N<\sub>, π<sub>1<\sub>,...., π<sub>N<\sub>) = P(s<sup>`<\sup>|s, a<sub>1<\sub>,….,a<sub>N<\sub>) = P(s<sup>`<\sup>|s; a<sub>1<\sub>,….,a<sub>N<\sub>;π<sub>1<\sub>,…..,π<sub>N<\sub>)
 for any π<sub>i<\sub>= π<sup>`<\sup><sub>i<\sub>. This is not the case if we do not explicitly condition on the actions of other agents, as done for most traditional RL methods.
 
 MADDPG is a multi-agent version of DDPG. DDPG is well suited to continuous control tasks and this just extends it to a multi-agent scenario.
