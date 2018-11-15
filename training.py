@@ -70,10 +70,14 @@ def train():
     # initialize policy and critic
     maddpg_agent = MADDPG(state_size, action_size, agents)
 
-    agent0_reward = []
-    agent1_reward = []
     scores = []
     scores_window = deque(maxlen=100)  # last 100 scores
+
+    actor_losses = []
+    critic_losses = []
+    for i in range(len(env_info.agents)):
+        actor_losses.append([])
+        critic_losses.append([])
 
     for episode in range(0, number_of_episodes):
 
@@ -106,43 +110,52 @@ def train():
 
             # update once after every steps_per_update
             if len(buffer) > BATCH_SIZE and (episode_t > 0) and (episode_t % steps_per_update == 0):
-                # print('update {}'.format(episode_t))
-                for agent_idx in range(2):
+                # print('maddpg update after {} steps'.format(episode_t))
+                for agent_idx in range(len(env_info.agents)):
                     samples = buffer.sample(BATCH_SIZE)
-                    maddpg_agent.update(samples, agent_idx)
+                    al, cl = maddpg_agent.update(samples, agent_idx)
+                    actor_losses[agent_idx].append(al)
+                    critic_losses[agent_idx].append(cl)
                 maddpg_agent.update_targets()  # soft update the target network towards the actual networks
 
-        # every episode
-        per_agent_rewards = []  # calculate per agent rewards
+        # calculate agent episode rewards
+        agent_episode_rewards = []
         for i in range(len(env_info.agents)):
-            per_agent_reward = 0
+            agent_episode_reward = 0
             for step in episode_rewards:
-                per_agent_reward += step[i]
-            per_agent_rewards.append(per_agent_reward)
+                agent_episode_reward += step[i]
+            agent_episode_rewards.append(agent_episode_reward)
 
-        scores.append(np.max(per_agent_rewards))
-        scores_window.append(np.max(per_agent_rewards))
+        scores.append(np.max(agent_episode_rewards))
+        scores_window.append(np.max(agent_episode_rewards))
 
-        print('\rEpisode {}\tAverage Score: {:.2f}'.format(episode, np.mean(scores_window)), end="")
-        if episode % 50 == 0:
-            print('\rEpisode {}\tAverage Score: {:.2f}'.format(episode, np.mean(scores_window)))
+        if episode > 10 and episode % 10 == 0:
+            print('\rEpisode {}\tAgent Rewards [{:.4f}\t{:.4f}]\tMax Reward {:.4f}'.format(episode,
+                                                                                           agent_episode_rewards[0],
+                                                                                           agent_episode_rewards[1],
+                                                                                           np.max(agent_episode_rewards)))
 
-        '''
-        print("episode rewards -> per agent {} max reward {} mean scores {}".format(np.sum(episode_rewards, axis=0), np.max(per_agent_rewards), np.mean(scores_window)))
+            print('\rEpisode {}\tAverage Actor 1 Loss {:.6f}\tAverage Critic 1 Loss {:.6f}'
+                  '\tAverage Actor 2 Loss {:.6f}\tAverage Critic 2 Loss {:.6f}'.format(episode,
+                                                                                       np.mean(actor_losses[0]),
+                                                                                       np.mean(critic_losses[0]),
+                                                                                       np.mean(actor_losses[1]),
+                                                                                       np.mean(critic_losses[1])))
 
-        agent0_reward.append(per_agent_rewards[0])
-        agent1_reward.append(per_agent_rewards[1])
+            print('\rEpisode {}\tAverage Score: {:.4f}'.format(episode, np.mean(scores_window)))
 
-        if episode % 10 == 0 or episode == number_of_episodes - 1:
-            avg_rewards = [np.mean(agent0_reward), np.mean(agent1_reward)]
-            agent0_reward = []
-            agent1_reward = []
-            for agent_idx, avg_rew in enumerate(avg_rewards):
-                print('agent %i / mean_episode_rewards' % agent_idx, avg_rew, episode)
-        '''
+            # reset losses
+            actor_losses = []
+            critic_losses = []
+            for i in range(len(env_info.agents)):
+                actor_losses.append([])
+                critic_losses.append([])
 
-        if np.mean(scores_window) >= 0.5:
-            print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(episode - 100,
+        if episode > 100 and episode % 100 == 0:
+            print('\rEpisode {}\tAverage Score: {:.4f}'.format(episode, np.mean(scores_window)))
+
+        if episode > 100 and np.mean(scores_window) >= 0.5:
+            print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.4f}'.format(episode - 100,
                                                                                          np.mean(scores_window)))
             for i, save_agent in enumerate(maddpg_agent.agents):
                 torch.save(save_agent.actor.state_dict(), './checkpoints/checkpoint_actor_'+str(i)+'.pth')

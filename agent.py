@@ -144,6 +144,7 @@ class MADDPG:
 
         al = actor_loss.cpu().detach().item()
         cl = critic_loss.cpu().detach().item()
+        return al, cl
 
     def update_targets(self):
         """soft update targets"""
