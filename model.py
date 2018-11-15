@@ -30,10 +30,10 @@ class Actor(nn.Module):
             nn.BatchNorm1d(state_size),
             nn.Linear(state_size, fc1_units),
             nn.ReLU(),
-            # nn.BatchNorm1d(fc1_units),
+            nn.BatchNorm1d(fc1_units),
             nn.Linear(fc1_units, fc2_units),
             nn.ReLU(),
-            # nn.BatchNorm1d(fc2_units),
+            nn.BatchNorm1d(fc2_units),
             nn.Linear(fc2_units, action_size),
             nn.Tanh()
         )
