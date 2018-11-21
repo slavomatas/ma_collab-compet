@@ -168,6 +168,12 @@ EPISODE_LENGTH = 500
 
 STEPS_PER_UPDATE = 100 # update the network parameters after every 100 samples added to the replay buffer
 
+### Rewards Plot
+
+The following graphs shows the average reward over the last 100 consecutive episodes (after taking the maximum over both agents).
+![results](scores_1.png)
+
+![results](scores_2.png)
 
 ### System Setup
 
@@ -189,9 +195,37 @@ During the course of training I have been tweaking various aspects of the MADDPG
 4.) Set Tau to 0.001 for the soft-updates ([MADDPG paper](https://arxiv.org/abs/1706.02275) suggests 0.01)
 5.) increased BATCH_SIZE to 1024.
 
-
 ## Ideas for Future Work
-It would be interesting to test this algorithm to solve more complex environments, which would require agents to be working in both a collaborative and competitive manner simultaneously.
+
+Following the 'Decentralized actor, Centralized critic approach' i would consider following:
+
+1. Policy Ensembles
+
+To obtain multi-agent policies that are more robust to changes in the policy of competing agents, we would train a collection of K different sub-policies.
+The problem of non-stationarity environment due to the agents’ changing policies is especially evident in competitive settings where
+where agents can derive a strong policy by overfitting to the behavior of their competitors.
+
+2. Apply improvements to MADDPG as implemented in D4PG algorithm ([D4PG paper](https://arxiv.org/abs/1804.08617)
+
+*Distributional critic (the critic now estimates a distribution for Q-values rather than a single Q-value for a given state and action)
+*Prioritized experience replay
+*Distributed parallel actors (utilizes K independent actors, gathering experience in parallel and populating the experience replay memory)
 
 
+Another approach to multi-gent reinforcement learning as suggested in ([D4PG paper](https://arxiv.org/abs/1804.08617)
+uses decentralized training and use a distributed implementation of PPO for very large scale multi-agent.
+
+The challenges in applying the distributed PPO algorithm to train multiple competitive agents simultaneously are following:
+1. Problem of exploration with the sparse reward
+2. The choice of opponent during training which can effect the stability of training.
+
+To tackle these challenges the paper suggests:
+
+1. Exploration Curriculum
+
+The use of exploration reward -> a dense reward at every step in the beginning phase of the training to allow agents to learn basic skills,
+which would increase the probability of random actions from the agent yielding a positive reward.
+The exploration reward is gradually annealed to zero, in favor of the competition reward, to allow the agents to train for the majority of the training using the sparse competition reward.
+
+2. Opponent Sampling
 
