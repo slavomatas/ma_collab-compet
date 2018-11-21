@@ -212,8 +212,16 @@ where agents can derive a strong policy by overfitting to the behavior of their 
 *Distributed parallel actors (utilizes K independent actors, gathering experience in parallel and populating the experience replay memory)
 
 
-Another approach to multi-gent reinforcement learning as suggested in ([D4PG paper](https://arxiv.org/abs/1804.08617)
-uses decentralized training and use a distributed implementation of PPO for very large scale multi-agent.
+Another improvement to centralized training of decentralized policies could be Counterfactual Multi-Agent (COMA).
+([Counterfactual Multi-Agent Policy Gradients paper](https://arxiv.org/abs/1705.08926)
+
+COMA uses a counterfactual baseline, the idea inspired by difference rewards that performs multi-agent credit assignment.
+COMA uses the centralised critic to compute an agent-specific advantage function that compares the estimated return for the current joint action to a counterfactual
+baseline that marginalises out a single agent’s action, while keeping the other agents’ actions fixed.
+
+
+Yet, another approach to multi-agent reinforcement learning uses decentralized training and use a distributed implementation of PPO for very large scale multi-agent.
+([Emergent Complexity via Multi-Agent Competition paper](https://arxiv.org/abs/1710.03748)
 
 The challenges in applying the distributed PPO algorithm to train multiple competitive agents simultaneously are following:
 1. Problem of exploration with the sparse reward
@@ -228,4 +236,5 @@ which would increase the probability of random actions from the agent yielding a
 The exploration reward is gradually annealed to zero, in favor of the competition reward, to allow the agents to train for the majority of the training using the sparse competition reward.
 
 2. Opponent Sampling
+
 
