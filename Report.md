@@ -171,6 +171,7 @@ STEPS_PER_UPDATE = 100 # update the network parameters after every 100 samples a
 ### Rewards Plot
 
 The following graphs shows the average reward over the last 100 consecutive episodes (after taking the maximum over both agents).
+
 ![results](scores_1.png)
 
 ![results](scores_2.png)
@@ -192,7 +193,7 @@ During the course of training I have been tweaking various aspects of the MADDPG
 1.) increased the hidden units of actor/critic model - for actor to 1024/300 and for critic to 512/300.
 2.) added batch normalization to the input layer actor and other actor layers as well as to the critic input layer -> this has greatly improved stability and convergence of training.
 3.) actions concatenated into the input layer (as opposed to the concatenation in the 1st hidden layer)
-4.) Set Tau to 0.001 for the soft-updates ([MADDPG paper](https://arxiv.org/abs/1706.02275) suggests 0.01)
+4.) Set Tau to 0.001 for the soft-updates ([MADDPG paper](https://arxiv.org/abs/1706.02275)) suggests 0.01)
 5.) increased BATCH_SIZE to 1024.
 
 ## Ideas for Future Work
@@ -205,7 +206,7 @@ To obtain multi-agent policies that are more robust to changes in the policy of 
 The problem of non-stationarity environment due to the agents’ changing policies is especially evident in competitive settings where
 where agents can derive a strong policy by overfitting to the behavior of their competitors.
 
-2. Apply improvements to MADDPG as implemented in D4PG algorithm ([D4PG paper](https://arxiv.org/abs/1804.08617)
+2. Apply improvements to MADDPG as implemented in D4PG algorithm ([D4PG paper](https://arxiv.org/abs/1804.08617))
 
 *Distributional critic (the critic now estimates a distribution for Q-values rather than a single Q-value for a given state and action)
 *Prioritized experience replay
@@ -213,7 +214,7 @@ where agents can derive a strong policy by overfitting to the behavior of their 
 
 
 Another improvement to centralized training of decentralized policies could be Counterfactual Multi-Agent (COMA).
-([Counterfactual Multi-Agent Policy Gradients paper](https://arxiv.org/abs/1705.08926)
+([Counterfactual Multi-Agent Policy Gradients paper](https://arxiv.org/abs/1705.08926))
 
 COMA uses a counterfactual baseline, the idea inspired by difference rewards that performs multi-agent credit assignment.
 COMA uses the centralised critic to compute an agent-specific advantage function that compares the estimated return for the current joint action to a counterfactual
@@ -221,7 +222,7 @@ baseline that marginalises out a single agent’s action, while keeping the othe
 
 
 Yet, another approach to multi-agent reinforcement learning uses decentralized training and use a distributed implementation of PPO for very large scale multi-agent.
-([Emergent Complexity via Multi-Agent Competition paper](https://arxiv.org/abs/1710.03748)
+([Emergent Complexity via Multi-Agent Competition paper](https://arxiv.org/abs/1710.03748))
 
 The challenges in applying the distributed PPO algorithm to train multiple competitive agents simultaneously are following:
 1. Problem of exploration with the sparse reward
